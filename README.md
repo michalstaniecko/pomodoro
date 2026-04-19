@@ -41,6 +41,34 @@ Clean Architecture (uproszczona) — `lib/features/<feature>/{data,domain,presen
 - `flutter analyze`
 - Branch per issue, PR do `main`, CI musi być zielone.
 
+### Code quality
+
+- Linter: `flutter_lints` + dodatkowe reguły w [`analysis_options.yaml`](analysis_options.yaml).
+- Formatter: `dart format` (2 spacje, LF, UTF-8 — zob. [`.editorconfig`](.editorconfig)).
+
+### Pre-commit hook (lefthook)
+
+Hook uruchamia `dart format --set-exit-if-changed` na staged plikach `.dart` i `flutter analyze` na całym projekcie.
+
+Instalacja (jednorazowo po sklonowaniu repo):
+
+```bash
+brew install lefthook
+lefthook install
+```
+
+Ręczne uruchomienie bez commita:
+
+```bash
+lefthook run pre-commit
+```
+
+Awaryjny bypass (nie nadużywać):
+
+```bash
+git commit --no-verify
+```
+
 ## Dokumentacja
 
 - [Specyfikacja](docs/spec.md)

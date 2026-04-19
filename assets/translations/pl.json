@@ -1,0 +1,10 @@
+{
+  "home": {
+    "app_info": "Pomodoro — szkielet M0"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "placeholder": "Ustawienia — placeholder",
+    "tooltip": "Ustawienia"
+  }
+}

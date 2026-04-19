@@ -1,0 +1,10 @@
+{
+  "home": {
+    "app_info": "Pomodoro — M0 scaffold"
+  },
+  "settings": {
+    "title": "Settings",
+    "placeholder": "Settings — placeholder",
+    "tooltip": "Settings"
+  }
+}

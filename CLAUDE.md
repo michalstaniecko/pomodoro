@@ -1,6 +1,13 @@
-# Fishdorro
+# Pomodoro by Small Fish
 
-Mobilna aplikacja Pomodoro (iOS + Android) wspierająca produktywność przez konfigurowalne cykle pracy i przerw, z **stale widoczną notyfikacją systemową** podczas trwania sesji.
+Mobilna aplikacja Pomodoro (iOS + Android) wspierająca produktywność przez konfigurowalne cykle pracy i przerw, z **stale widoczną notyfikacją systemową** podczas trwania sesji. Bezpośrednio powiązana z serwisami **sardynkibiznesu.pl** (PL) i **smallfishbusiness.com** (EN).
+
+## Nazewnictwo (branding)
+- **Pełna nazwa:** „Pomodoro. Powered by smallfishbusiness.com" (EN) / „Pomodoro. Powered by sardynkibiznesu.pl" (PL) — używane w sekcji About, marketing, opisach sklepów.
+- **App name (launcher, max 30 zn.):** „Pomodoro by Small Fish" (EN, domyślny) / „Pomodoro by Sardynki" (PL, l10n).
+- **MaterialApp.title / CFBundleName / task switcher:** „Pomodoro".
+- **Bundle ID / applicationId:** `com.smallfishbusiness.pomodoro` (jeden globalny, niezmienialny po publikacji w storach).
+- **Dart package name (internal):** `pomodoro`.
 
 ## Stack
 - **Flutter** (Dart 3.5+) — cross-platform iOS/Android
@@ -22,7 +29,7 @@ Mobilna aplikacja Pomodoro (iOS + Android) wspierająca produktywność przez ko
 - **`plan.md`** — plan wysokiego poziomu, etapy, ryzyka, harmonogram MVP
 - **`roadmap.md`** — szczegółowy roadmap z opisem wszystkich issues (źródło dla GitHub)
 - **GitHub Issues** — aktualny status prac, podzielone na milestone'y M0-M6 + Post-MVP
-  - Repo: `michalstaniecko/fishdorro`
+  - Repo: `michalstaniecko/pomodoro`
 
 ## Konwencje
 - Architektura: **Clean Architecture** w uproszczonej formie (`data` / `domain` / `presentation` per feature w `lib/features/`)

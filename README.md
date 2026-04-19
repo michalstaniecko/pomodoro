@@ -1,6 +1,6 @@
-# Fishdorro
+# Pomodoro by Small Fish
 
-Mobilna aplikacja Pomodoro (iOS + Android) z trwałą notyfikacją systemową podczas trwania sesji. Flutter + Firebase.
+Mobilna aplikacja Pomodoro (iOS + Android) z trwałą notyfikacją systemową podczas trwania sesji. Flutter + Firebase. Część ekosystemu [sardynkibiznesu.pl](https://sardynkibiznesu.pl) / [smallfishbusiness.com](https://smallfishbusiness.com).
 
 ## Wymagania
 

@@ -1,5 +1,5 @@
-name: fishdorro
-description: "Fishdorro - Pomodoro productivity app with persistent system notifications."
+name: pomodoro
+description: "Pomodoro by Small Fish Business — productivity app with persistent system notifications."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

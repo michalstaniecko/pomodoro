@@ -12,7 +12,7 @@ class HomeScreen extends ConsumerWidget {
     final appInfo = ref.watch(appInfoProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Fishdorro')),
+      appBar: AppBar(title: const Text('Pomodoro')),
       body: Center(child: Text(appInfo)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.go('/settings'),

@@ -23,7 +23,7 @@ Utworzenie nowego projektu Flutter z konfiguracją dla iOS i Android.
 **Estimate:** S
 
 ## Acceptance criteria
-- [ ] Wykonane `flutter create` z odpowiednim org/bundle id (`com.fishdorro.pomodoro` lub do ustalenia)
+- [ ] Wykonane `flutter create` z odpowiednim org/bundle id (`com.smallfishbusiness.pomodoro`)
 - [ ] Skonfigurowane min. wersje SDK: iOS 13+, Android API 23+
 - [ ] Aplikacja uruchamia się na symulatorze iOS i emulatorze Android
 - [ ] `.gitignore` skonfigurowany pod Flutter + iOS + Android

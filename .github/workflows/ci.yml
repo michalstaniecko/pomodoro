@@ -79,5 +79,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Pod install
+        working-directory: ios
+        run: pod install --repo-update
+
       - name: Build iOS
         run: flutter build ios --no-codesign --debug

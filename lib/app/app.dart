@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/router_provider.dart';
+import 'theme/app_theme.dart';
 
 class PomodoroApp extends ConsumerWidget {
   const PomodoroApp({super.key});
@@ -12,10 +13,9 @@ class PomodoroApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'Pomodoro',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       routerConfig: router,
     );
   }

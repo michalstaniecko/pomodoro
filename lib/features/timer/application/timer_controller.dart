@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/pomodoro_cycle.dart';
 import '../domain/pomodoro_session.dart';
 import '../domain/session_type.dart';
 import '../domain/start_next_session_use_case.dart';
 import '../domain/timer_state.dart';
 import '../domain/timer_state_transitions.dart';
 import 'clock.dart';
+import 'cycle_controller.dart';
 import 'session_finished_event.dart';
 import 'ticker.dart';
 import 'timer_settings.dart';
@@ -31,7 +31,6 @@ class TimerController extends Notifier<TimerState> {
   late TimerSettings _settings;
   late StartNextSessionUseCase _startNextSessionUseCase;
 
-  PomodoroCycle _cycle = const PomodoroCycle();
   StreamSubscription<void>? _tickerSub;
   final StreamController<SessionFinishedEvent> _events =
       StreamController<SessionFinishedEvent>.broadcast();
@@ -46,9 +45,6 @@ class TimerController extends Notifier<TimerState> {
     _clock = ref.watch(clockProvider);
     _settings = ref.watch(timerSettingsProvider);
     _startNextSessionUseCase = ref.watch(startNextSessionUseCaseProvider);
-    _cycle = PomodoroCycle(
-      sessionsBeforeLongBreak: _settings.sessionsBeforeLongBreak,
-    );
 
     ref.onDispose(() {
       unawaited(_tickerSub?.cancel());
@@ -116,11 +112,12 @@ class TimerController extends Notifier<TimerState> {
       );
     }
     _stopTicking();
+    final cycle = ref.read(cycleControllerProvider);
     final result = _startNextSessionUseCase(
-      cycle: _cycle,
+      cycle: cycle,
       completedType: skippedType,
     );
-    _cycle = result.cycle;
+    ref.read(cycleControllerProvider.notifier).set(result.cycle);
     state = TimerState.idle(nextSessionType: result.nextType);
   }
 
@@ -155,11 +152,12 @@ class TimerController extends Notifier<TimerState> {
     _events.add(
       SessionFinishedEvent(session: finished.session, finishedAt: finishedAt),
     );
+    final cycle = ref.read(cycleControllerProvider);
     final result = _startNextSessionUseCase(
-      cycle: _cycle,
+      cycle: cycle,
       completedType: finished.session.type,
     );
-    _cycle = result.cycle;
+    ref.read(cycleControllerProvider.notifier).set(result.cycle);
     state = TimerState.idle(nextSessionType: result.nextType);
   }
 }

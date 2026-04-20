@@ -24,18 +24,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Pomodoro — szkielet M0'), findsOneWidget);
+    // Ekran Home z timerem.
+    expect(find.text('Start'), findsOneWidget);
+    expect(find.text('Praca'), findsOneWidget);
     expect(find.text('Ustawienia — placeholder'), findsNothing);
 
     await tester.tap(find.byTooltip('Ustawienia'));
     await tester.pumpAndSettle();
 
     expect(find.text('Ustawienia — placeholder'), findsOneWidget);
-    expect(find.text('Pomodoro — szkielet M0'), findsNothing);
+    expect(find.text('Start'), findsNothing);
 
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pomodoro — szkielet M0'), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
+    expect(find.text('Praca'), findsOneWidget);
   });
 }

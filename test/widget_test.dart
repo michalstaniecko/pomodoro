@@ -12,9 +12,7 @@ void main() {
     await EasyLocalization.ensureInitialized();
   });
 
-  testWidgets('PomodoroApp renders home route with placeholder text', (
-    tester,
-  ) async {
+  testWidgets('PomodoroApp renders home route with timer UI', (tester) async {
     await tester.pumpWidget(
       EasyLocalization(
         supportedLocales: const [Locale('pl'), Locale('en')],
@@ -26,8 +24,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Pomodoro — szkielet M0'), findsOneWidget);
     expect(find.byType(MaterialApp), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
+    // Etykieta typu sesji — domyślnie „Praca".
+    expect(find.text('Praca'), findsOneWidget);
+    // Przycisk Start widoczny w stanie Idle.
+    expect(find.text('Start'), findsOneWidget);
+    // Countdown dla domyślnych 25 minut.
+    expect(find.text('25:00'), findsOneWidget);
+    // Progres cyklu 0/4.
+    expect(find.text('0/4 sesji'), findsOneWidget);
   });
 }

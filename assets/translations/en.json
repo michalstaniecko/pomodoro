@@ -6,5 +6,20 @@
     "title": "Settings",
     "placeholder": "Settings — placeholder",
     "tooltip": "Settings"
+  },
+  "timer": {
+    "session_type": {
+      "work": "Work",
+      "short_break": "Short break",
+      "long_break": "Long break"
+    },
+    "actions": {
+      "start": "Start",
+      "pause": "Pause",
+      "resume": "Resume",
+      "stop": "Stop",
+      "skip": "Skip"
+    },
+    "cycle_progress": "{current}/{total} sessions"
   }
 }

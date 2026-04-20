@@ -6,5 +6,20 @@
     "title": "Ustawienia",
     "placeholder": "Ustawienia — placeholder",
     "tooltip": "Ustawienia"
+  },
+  "timer": {
+    "session_type": {
+      "work": "Praca",
+      "short_break": "Krótka przerwa",
+      "long_break": "Długa przerwa"
+    },
+    "actions": {
+      "start": "Start",
+      "pause": "Pauza",
+      "resume": "Wznów",
+      "stop": "Stop",
+      "skip": "Pomiń"
+    },
+    "cycle_progress": "{current}/{total} sesji"
   }
 }

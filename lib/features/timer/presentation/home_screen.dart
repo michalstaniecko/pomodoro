@@ -45,64 +45,76 @@ class HomeScreen extends ConsumerWidget {
                   fontWeight: FontWeight.w300,
                 );
 
+            final hPad = isCompact ? 16.0 : 32.0;
+            final vPad = isCompact ? 16.0 : 24.0;
+
             return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isCompact ? 16 : 32,
-                vertical: isCompact ? 16 : 24,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _sessionTypeLabel(sessionType).tr(),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: dialSize,
-                    height: dialSize,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Positioned.fill(
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween<double>(
-                              begin: progress,
-                              end: progress,
+              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 2 * vPad,
+                  minWidth: constraints.maxWidth - 2 * hPad,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      _sessionTypeLabel(sessionType).tr(),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: dialSize,
+                      height: dialSize,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned.fill(
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween<double>(
+                                begin: progress,
+                                end: progress,
+                              ),
+                              duration: const Duration(milliseconds: 300),
+                              builder: (context, value, _) =>
+                                  CircularProgressIndicator(
+                                    value: value,
+                                    strokeWidth: isCompact ? 8 : 12,
+                                  ),
                             ),
-                            duration: const Duration(milliseconds: 300),
-                            builder: (context, value, _) =>
-                                CircularProgressIndicator(
-                                  value: value,
-                                  strokeWidth: isCompact ? 8 : 12,
-                                ),
                           ),
-                        ),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: Text(
-                            _formatCountdown(remaining),
-                            key: ValueKey<String>(_formatCountdown(remaining)),
-                            style: countdownStyle,
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: Text(
+                              _formatCountdown(remaining),
+                              key: ValueKey<String>(
+                                _formatCountdown(remaining),
+                              ),
+                              textAlign: TextAlign.center,
+                              style: countdownStyle,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    LocaleKeys.timer_cycle_progress.tr(
-                      namedArgs: {
-                        'current':
-                            '${cycle.completedWorkSessions % cycle.sessionsBeforeLongBreak}',
-                        'total': '${cycle.sessionsBeforeLongBreak}',
-                      },
+                    const SizedBox(height: 24),
+                    Text(
+                      LocaleKeys.timer_cycle_progress.tr(
+                        namedArgs: {
+                          'current':
+                              '${cycle.completedWorkSessions % cycle.sessionsBeforeLongBreak}',
+                          'total': '${cycle.sessionsBeforeLongBreak}',
+                        },
+                      ),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 24),
-                  _TimerActions(state: timerState),
-                ],
+                    const SizedBox(height: 24),
+                    _TimerActions(state: timerState),
+                  ],
+                ),
               ),
             );
           },

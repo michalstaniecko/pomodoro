@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/locale_keys.g.dart';
+import '../../notifications/application/permission_providers.dart';
+import '../../notifications/domain/notification_permission_coordinator.dart';
 import '../application/cycle_controller.dart';
 import '../application/timer_controller.dart';
 import '../application/timer_settings.dart';
@@ -181,7 +183,7 @@ class _TimerActions extends ConsumerWidget {
     final buttons = switch (state) {
       TimerIdle() => <Widget>[
         FilledButton.icon(
-          onPressed: controller.start,
+          onPressed: () => _handleStart(context, ref),
           icon: const Icon(Icons.play_arrow),
           label: Text(LocaleKeys.timer_actions_start.tr()),
         ),
@@ -231,4 +233,46 @@ class _TimerActions extends ConsumerWidget {
       children: buttons,
     );
   }
+}
+
+Future<void> _handleStart(BuildContext context, WidgetRef ref) async {
+  final coordinator = ref.read(notificationPermissionCoordinatorProvider);
+  final status = await coordinator.ensure();
+  if (!context.mounted) {
+    return;
+  }
+  switch (status) {
+    case NotificationPermissionStatus.granted:
+      break;
+    case NotificationPermissionStatus.denied:
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(LocaleKeys.permissions_denied_snackbar.tr())),
+      );
+    case NotificationPermissionStatus.permanentlyDenied:
+      final opened = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(LocaleKeys.permissions_permanently_denied_title.tr()),
+          content: Text(LocaleKeys.permissions_permanently_denied_body.tr()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(LocaleKeys.permissions_dismiss.tr()),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(LocaleKeys.permissions_open_settings.tr()),
+            ),
+          ],
+        ),
+      );
+      if (opened ?? false) {
+        await coordinator.openSettings();
+      }
+      if (!context.mounted) {
+        return;
+      }
+  }
+  // Timer startuje niezależnie od decyzji — notyfikacje to enhancement, nie core.
+  ref.read(timerControllerProvider.notifier).start();
 }

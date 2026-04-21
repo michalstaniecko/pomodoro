@@ -35,5 +35,12 @@
       "skip": "Skip"
     },
     "cycle_progress": "{current}/{total} sessions"
+  },
+  "permissions": {
+    "denied_snackbar": "Without notification permission you won't get the session-end signal while the app is in the background.",
+    "permanently_denied_title": "Notifications disabled",
+    "permanently_denied_body": "Enable notifications in system settings to receive session-end signals.",
+    "open_settings": "Open settings",
+    "dismiss": "Dismiss"
   }
 }

@@ -1,11 +1,11 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../domain/notification_channels.dart';
 
 /// Inicjalizuje `FlutterLocalNotificationsPlugin`: ustawia settings natywne,
-/// tworzy kanały Android i prosi o uprawnienia runtime (iOS + Android 13+).
+/// tworzy kanały Android. Runtime permissions (POST_NOTIFICATIONS / iOS alert+
+/// badge+sound) obsługuje `NotificationPermissionCoordinator` wołany przed
+/// pierwszym startem timera — nie duplikujemy promptu z poziomu pluginu.
 ///
 /// Wywoływane raz z `main()` przed `runApp`. Zwraca gotowy do użycia plugin,
 /// który kolejne issues (foreground service, scheduling) wstrzykną przez
@@ -20,8 +20,8 @@ class LocalNotificationsInitializer {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // requestAlertPermission/Badge/Sound = false — uprawnienia prosimy jawnie
-    // poniżej, żeby móc sterować momentem promptu w późniejszych issues.
+    // request*Permission = false — prompt obsługuje `permission_handler`
+    // przed pierwszym startem timera, nie w `main()`.
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
           requestAlertPermission: false,
@@ -37,7 +37,6 @@ class LocalNotificationsInitializer {
     await plugin.initialize(settings);
 
     await _createAndroidChannels(plugin);
-    await _requestPermissions(plugin);
 
     return plugin;
   }
@@ -77,23 +76,5 @@ class LocalNotificationsInitializer {
 
     await android.createNotificationChannel(sessionChannel);
     await android.createNotificationChannel(endChannel);
-  }
-
-  Future<void> _requestPermissions(
-    FlutterLocalNotificationsPlugin plugin,
-  ) async {
-    if (Platform.isIOS) {
-      await plugin
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-    } else if (Platform.isAndroid) {
-      await plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission();
-    }
   }
 }

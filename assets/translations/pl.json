@@ -35,5 +35,12 @@
       "skip": "Pomiń"
     },
     "cycle_progress": "{current}/{total} sesji"
+  },
+  "permissions": {
+    "denied_snackbar": "Bez zgody na notyfikacje nie dostaniesz sygnału końca sesji, gdy aplikacja działa w tle.",
+    "permanently_denied_title": "Notyfikacje wyłączone",
+    "permanently_denied_body": "Zezwól na notyfikacje w ustawieniach systemu, aby otrzymywać sygnał końca sesji.",
+    "open_settings": "Otwórz ustawienia",
+    "dismiss": "Pomiń"
   }
 }

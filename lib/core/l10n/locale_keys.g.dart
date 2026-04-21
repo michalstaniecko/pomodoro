@@ -34,4 +34,11 @@ abstract class LocaleKeys {
   static const timer_actions_stop = 'timer.actions.stop';
   static const timer_actions_skip = 'timer.actions.skip';
   static const timer_cycle_progress = 'timer.cycle_progress';
+  static const permissions_denied_snackbar = 'permissions.denied_snackbar';
+  static const permissions_permanently_denied_title =
+      'permissions.permanently_denied_title';
+  static const permissions_permanently_denied_body =
+      'permissions.permanently_denied_body';
+  static const permissions_open_settings = 'permissions.open_settings';
+  static const permissions_dismiss = 'permissions.dismiss';
 }

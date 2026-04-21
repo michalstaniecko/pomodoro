@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../settings/application/settings_providers.dart';
+import '../../settings/domain/settings_repository.dart';
 import '../domain/session_type.dart';
 
 @immutable
@@ -96,8 +100,25 @@ class TimerSettings {
 }
 
 class TimerSettingsNotifier extends Notifier<TimerSettings> {
+  SettingsRepository get _repo => ref.read(settingsRepositoryProvider);
+
   @override
-  TimerSettings build() => const TimerSettings();
+  TimerSettings build() {
+    _hydrate();
+    return const TimerSettings();
+  }
+
+  Future<void> _hydrate() async {
+    try {
+      state = await _repo.load();
+    } catch (_) {
+      // Keep defaults on load failure.
+    }
+  }
+
+  void _persist() {
+    unawaited(_repo.save(state));
+  }
 
   void setWorkMinutes(int minutes) {
     final clamped = minutes.clamp(
@@ -105,6 +126,7 @@ class TimerSettingsNotifier extends Notifier<TimerSettings> {
       TimerSettings.workMaxMinutes,
     );
     state = state.copyWith(workDuration: Duration(minutes: clamped));
+    _persist();
   }
 
   void setShortBreakMinutes(int minutes) {
@@ -113,6 +135,7 @@ class TimerSettingsNotifier extends Notifier<TimerSettings> {
       TimerSettings.shortBreakMaxMinutes,
     );
     state = state.copyWith(shortBreakDuration: Duration(minutes: clamped));
+    _persist();
   }
 
   void setLongBreakMinutes(int minutes) {
@@ -121,6 +144,7 @@ class TimerSettingsNotifier extends Notifier<TimerSettings> {
       TimerSettings.longBreakMaxMinutes,
     );
     state = state.copyWith(longBreakDuration: Duration(minutes: clamped));
+    _persist();
   }
 
   void setSessionsBeforeLongBreak(int count) {
@@ -129,22 +153,27 @@ class TimerSettingsNotifier extends Notifier<TimerSettings> {
       TimerSettings.sessionsMax,
     );
     state = state.copyWith(sessionsBeforeLongBreak: clamped);
+    _persist();
   }
 
   void setAutoStartBreaks(bool value) {
     state = state.copyWith(autoStartBreaks: value);
+    _persist();
   }
 
   void setAutoStartNextWork(bool value) {
     state = state.copyWith(autoStartNextWork: value);
+    _persist();
   }
 
   void setSoundEnabled(bool value) {
     state = state.copyWith(soundEnabled: value);
+    _persist();
   }
 
   void setVibrationEnabled(bool value) {
     state = state.copyWith(vibrationEnabled: value);
+    _persist();
   }
 }
 

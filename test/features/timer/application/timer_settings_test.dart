@@ -1,8 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pomodoro/features/settings/data/shared_preferences_settings_repository.dart';
 import 'package:pomodoro/features/timer/application/timer_settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('TimerSettings', () {
     test('default values', () {
       const s = TimerSettings();
@@ -138,6 +146,16 @@ void main() {
     test('setVibrationEnabled toggles flag', () {
       container.read(timerSettingsProvider.notifier).setVibrationEnabled(false);
       expect(container.read(timerSettingsProvider).vibrationEnabled, isFalse);
+    });
+
+    test('setWorkMinutes persists to SharedPreferences', () async {
+      container.read(timerSettingsProvider.notifier).setWorkMinutes(30);
+      await Future<void>.delayed(Duration.zero);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getInt(SharedPreferencesSettingsRepository.keyWorkMinutes),
+        30,
+      );
     });
   });
 }

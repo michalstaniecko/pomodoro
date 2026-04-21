@@ -13,6 +13,7 @@ const int _foregroundNotificationId = 1001;
 const String _actionPauseId = 'pomodoro_action_pause';
 const String _actionResumeId = 'pomodoro_action_resume';
 const String _actionStopId = 'pomodoro_action_stop';
+const String _openTimerPayload = 'open_timer';
 
 class AndroidForegroundService implements PomodoroForegroundService {
   AndroidForegroundService({FlutterBackgroundService? service})
@@ -171,6 +172,7 @@ void _onServiceStart(ServiceInstance service) {
       title,
       content,
       NotificationDetails(android: details),
+      payload: _openTimerPayload,
     );
 
     if (service is AndroidServiceInstance) {

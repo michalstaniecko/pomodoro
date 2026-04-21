@@ -107,18 +107,27 @@ class TimerController extends Notifier<TimerState> {
 
   void stop() {
     final current = state;
-    final SessionType cancelledType;
+    final PomodoroSession cancelledSession;
     if (current is TimerRunning) {
-      cancelledType = current.session.type;
+      cancelledSession = current.session;
     } else if (current is TimerPaused) {
-      cancelledType = current.session.type;
+      cancelledSession = current.session;
     } else {
       throw StateError(
         'stop() dozwolony tylko z TimerRunning/TimerPaused (aktualny: ${current.runtimeType}).',
       );
     }
     _stopTicking();
-    state = TimerState.idle(nextSessionType: cancelledType);
+    final finishedAt = ref.read(clockProvider)();
+    if (!_events.isClosed) {
+      _events.add(
+        SessionFinishedEvent(
+          session: cancelledSession.copyWith(completedAt: finishedAt),
+          finishedAt: finishedAt,
+        ),
+      );
+    }
+    state = TimerState.idle(nextSessionType: cancelledSession.type);
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
 

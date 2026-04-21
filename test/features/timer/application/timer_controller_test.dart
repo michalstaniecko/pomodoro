@@ -120,6 +120,51 @@ void main() {
       expect((state as TimerIdle).nextSessionType, SessionType.work);
     });
 
+    test(
+      'stop() from Running emits SessionFinishedEvent with completed=false',
+      () async {
+        final events = <SessionFinishedEvent>[];
+        final sub = container
+            .read(timerControllerProvider.notifier)
+            .events
+            .listen(events.add);
+        addTearDown(sub.cancel);
+
+        final controller = container.read(timerControllerProvider.notifier);
+        controller.start();
+        controller.stop();
+        await pump();
+
+        expect(events, hasLength(1));
+        expect(events.single.session.completed, isFalse);
+        expect(events.single.session.type, SessionType.work);
+        expect(events.single.finishedAt, now);
+      },
+    );
+
+    test(
+      'stop() from Paused emits SessionFinishedEvent with completed=false',
+      () async {
+        final events = <SessionFinishedEvent>[];
+        final sub = container
+            .read(timerControllerProvider.notifier)
+            .events
+            .listen(events.add);
+        addTearDown(sub.cancel);
+
+        final controller = container.read(timerControllerProvider.notifier);
+        controller.start();
+        ticker.fire();
+        await pump();
+        controller.pause();
+        controller.stop();
+        await pump();
+
+        expect(events, hasLength(1));
+        expect(events.single.session.completed, isFalse);
+      },
+    );
+
     test('skip() advances cycle to next session type without event', () async {
       final events = <SessionFinishedEvent>[];
       final sub = container

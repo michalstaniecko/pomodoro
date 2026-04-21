@@ -34,7 +34,13 @@ class LocalNotificationsInitializer {
       iOS: iosSettings,
     );
 
-    await plugin.initialize(settings);
+    // Callbacki tap-response są potrzebne, żeby plugin wystawił PendingIntent
+    // na MainActivity — tap na korpus ongoing notyfikacji wybudza app.
+    await plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: _onForegroundTap,
+      onDidReceiveBackgroundNotificationResponse: _onBackgroundTap,
+    );
 
     await _createAndroidChannels(plugin);
 
@@ -77,4 +83,17 @@ class LocalNotificationsInitializer {
     await android.createNotificationChannel(sessionChannel);
     await android.createNotificationChannel(endChannel);
   }
+}
+
+@pragma('vm:entry-point')
+void _onForegroundTap(NotificationResponse response) {
+  // Plugin samoistnie otwiera MainActivity przez swój PendingIntent.
+  // Router ma initialLocation '/' (timer) → user trafia na właściwy ekran.
+  // Action press (pause/resume/stop) jest obsłużony w AndroidForegroundService.
+}
+
+@pragma('vm:entry-point')
+void _onBackgroundTap(NotificationResponse response) {
+  // No-op — handler istnieje, żeby plugin wystawił background PendingIntent
+  // dla scenariusza z zabitą aplikacją.
 }

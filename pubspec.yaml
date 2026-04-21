@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  audioplayers: ^6.1.0
   cupertino_icons: ^1.0.8
   easy_localization: ^3.0.8
   flutter:
@@ -37,6 +38,7 @@ dependencies:
   go_router: ^14.6.2
   json_annotation: ^4.9.0
   shared_preferences: ^2.5.5
+  vibration: ^2.0.0
 
 dev_dependencies:
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -62,6 +64,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/sounds/
     - assets/translations/
 
   # An image asset can refer to one or more resolution-specific "variants", see

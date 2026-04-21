@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/router_provider.dart';
+import '../features/notifications/presentation/session_end_signal_observer.dart';
 import 'theme/app_theme.dart';
 
 class PomodoroApp extends ConsumerWidget {
@@ -12,15 +13,17 @@ class PomodoroApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
 
-    return MaterialApp.router(
-      title: 'Pomodoro',
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      locale: context.locale,
-      supportedLocales: context.supportedLocales,
-      localizationsDelegates: context.localizationDelegates,
-      routerConfig: router,
+    return SessionEndSignalObserver(
+      child: MaterialApp.router(
+        title: 'Pomodoro',
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.system,
+        locale: context.locale,
+        supportedLocales: context.supportedLocales,
+        localizationsDelegates: context.localizationDelegates,
+        routerConfig: router,
+      ),
     );
   }
 }

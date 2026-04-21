@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomodoro/app/app.dart';
+import 'package:pomodoro/features/timer/application/foreground_service_providers.dart';
+import 'package:pomodoro/features/timer/data/noop_foreground_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -19,7 +21,14 @@ void main() {
         path: 'assets/translations',
         fallbackLocale: const Locale('pl'),
         startLocale: const Locale('pl'),
-        child: const ProviderScope(child: PomodoroApp()),
+        child: ProviderScope(
+          overrides: [
+            pomodoroForegroundServiceProvider.overrideWithValue(
+              const NoopPomodoroForegroundService(),
+            ),
+          ],
+          child: const PomodoroApp(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

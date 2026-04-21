@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/pomodoro_session.dart';
+import '../domain/session_display_labels.dart';
 import '../domain/session_type.dart';
 import '../domain/start_next_session_use_case.dart';
 import '../domain/timer_state.dart';
 import '../domain/timer_state_transitions.dart';
 import 'clock.dart';
 import 'cycle_controller.dart';
+import 'foreground_service_providers.dart';
 import 'session_finished_event.dart';
 import 'ticker.dart';
 import 'timer_settings.dart';
@@ -46,7 +48,7 @@ class TimerController extends Notifier<TimerState> {
     return const TimerState.idle();
   }
 
-  void start() {
+  void start({SessionDisplayLabels? labels}) {
     final current = state;
     if (current is! TimerIdle) {
       throw StateError(
@@ -64,16 +66,43 @@ class TimerController extends Notifier<TimerState> {
     );
     state = state.start(session);
     _startTicking();
+    if (labels != null) {
+      unawaited(
+        ref
+            .read(pomodoroForegroundServiceProvider)
+            .start(type: type, total: session.duration, labels: labels),
+      );
+    }
   }
 
   void pause() {
+    final before = state;
     state = state.pause();
     _stopTicking();
+    if (before is TimerRunning) {
+      final remaining = before.session.duration - before.elapsed;
+      unawaited(
+        ref
+            .read(pomodoroForegroundServiceProvider)
+            .pause(remaining: remaining.isNegative ? Duration.zero : remaining),
+      );
+    }
   }
 
   void resume() {
+    final before = state;
     state = state.resume();
     _startTicking();
+    if (before is TimerPaused) {
+      final remaining = before.session.duration - before.elapsed;
+      unawaited(
+        ref
+            .read(pomodoroForegroundServiceProvider)
+            .resume(
+              remaining: remaining.isNegative ? Duration.zero : remaining,
+            ),
+      );
+    }
   }
 
   void stop() {
@@ -90,6 +119,7 @@ class TimerController extends Notifier<TimerState> {
     }
     _stopTicking();
     state = TimerState.idle(nextSessionType: cancelledType);
+    unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
 
   void skip() {
@@ -112,6 +142,7 @@ class TimerController extends Notifier<TimerState> {
     );
     ref.read(cycleControllerProvider.notifier).set(result.cycle);
     state = TimerState.idle(nextSessionType: result.nextType);
+    unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
 
   void _startTicking() {
@@ -160,5 +191,6 @@ class TimerController extends Notifier<TimerState> {
     );
     ref.read(cycleControllerProvider.notifier).set(result.cycle);
     state = TimerState.idle(nextSessionType: result.nextType);
+    unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
 }

@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomodoro/features/timer/application/clock.dart';
+import 'package:pomodoro/features/timer/application/foreground_service_providers.dart';
 import 'package:pomodoro/features/timer/application/session_finished_event.dart';
 import 'package:pomodoro/features/timer/application/ticker.dart';
 import 'package:pomodoro/features/timer/application/timer_controller.dart';
 import 'package:pomodoro/features/timer/application/timer_settings.dart';
+import 'package:pomodoro/features/timer/data/pomodoro_foreground_service.dart';
+import 'package:pomodoro/features/timer/domain/session_display_labels.dart';
 import 'package:pomodoro/features/timer/domain/session_type.dart';
 import 'package:pomodoro/features/timer/domain/timer_state.dart';
 
@@ -31,6 +34,7 @@ void main() {
   late FakeTicker ticker;
   late DateTime now;
   late ProviderContainer container;
+  late _FakeForegroundService service;
 
   const testSettings = TimerSettings(
     workDuration: Duration(seconds: 3),
@@ -42,6 +46,7 @@ void main() {
   setUp(() {
     ticker = FakeTicker();
     now = DateTime.utc(2026, 1, 1, 9);
+    service = _FakeForegroundService();
     container = ProviderContainer(
       overrides: [
         tickerProvider.overrideWithValue(ticker),
@@ -49,6 +54,7 @@ void main() {
         timerSettingsProvider.overrideWith(
           () => _FixedTimerSettingsNotifier(testSettings),
         ),
+        pomodoroForegroundServiceProvider.overrideWithValue(service),
       ],
     );
     addTearDown(container.dispose);
@@ -207,6 +213,30 @@ void main() {
       expect(controller.stop, throwsStateError);
     });
 
+    test('start/pause/resume/stop delegują do foreground service', () async {
+      final controller = container.read(timerControllerProvider.notifier);
+      const labels = SessionDisplayLabels(
+        work: 'Work',
+        shortBreak: 'Short',
+        longBreak: 'Long',
+        pause: 'Pause',
+        resume: 'Resume',
+        stop: 'Stop',
+      );
+
+      controller.start(labels: labels);
+      expect(service.starts, 1);
+
+      controller.pause();
+      expect(service.pauses, 1);
+
+      controller.resume();
+      expect(service.resumes, 1);
+
+      controller.stop();
+      expect(service.stops, 1);
+    });
+
     test('skip() from Idle throws StateError', () {
       final controller = container.read(timerControllerProvider.notifier);
 
@@ -243,4 +273,44 @@ class _FixedTimerSettingsNotifier extends TimerSettingsNotifier {
 
   @override
   TimerSettings build() => _initial;
+}
+
+class _FakeForegroundService implements PomodoroForegroundService {
+  int starts = 0;
+  int pauses = 0;
+  int resumes = 0;
+  int stops = 0;
+
+  @override
+  Future<void> configure() async {}
+
+  @override
+  Future<void> start({
+    required SessionType type,
+    required Duration total,
+    required SessionDisplayLabels labels,
+  }) async {
+    starts++;
+  }
+
+  @override
+  Future<void> pause({required Duration remaining}) async {
+    pauses++;
+  }
+
+  @override
+  Future<void> resume({required Duration remaining}) async {
+    resumes++;
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+  }
+
+  @override
+  Stream<ForegroundServiceAction> get actions => const Stream.empty();
+
+  @override
+  Future<void> dispose() async {}
 }

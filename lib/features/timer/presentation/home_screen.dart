@@ -11,6 +11,7 @@ import '../../notifications/domain/notification_permission_coordinator.dart';
 import '../application/cycle_controller.dart';
 import '../application/timer_controller.dart';
 import '../application/timer_settings.dart';
+import '../domain/session_display_labels.dart';
 import '../domain/session_type.dart';
 import '../domain/timer_state.dart';
 
@@ -274,5 +275,16 @@ Future<void> _handleStart(BuildContext context, WidgetRef ref) async {
       }
   }
   // Timer startuje niezależnie od decyzji — notyfikacje to enhancement, nie core.
-  ref.read(timerControllerProvider.notifier).start();
+  ref.read(timerControllerProvider.notifier).start(labels: _buildLabels());
+}
+
+SessionDisplayLabels _buildLabels() {
+  return SessionDisplayLabels(
+    work: LocaleKeys.timer_session_type_work.tr(),
+    shortBreak: LocaleKeys.timer_session_type_short_break.tr(),
+    longBreak: LocaleKeys.timer_session_type_long_break.tr(),
+    pause: LocaleKeys.timer_actions_pause.tr(),
+    resume: LocaleKeys.timer_actions_resume.tr(),
+    stop: LocaleKeys.timer_actions_stop.tr(),
+  );
 }

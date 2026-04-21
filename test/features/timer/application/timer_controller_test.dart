@@ -46,7 +46,9 @@ void main() {
       overrides: [
         tickerProvider.overrideWithValue(ticker),
         clockProvider.overrideWithValue(() => now),
-        timerSettingsProvider.overrideWithValue(testSettings),
+        timerSettingsProvider.overrideWith(
+          () => _FixedTimerSettingsNotifier(testSettings),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -232,4 +234,13 @@ void main() {
       },
     );
   });
+}
+
+class _FixedTimerSettingsNotifier extends TimerSettingsNotifier {
+  _FixedTimerSettingsNotifier(this._initial);
+
+  final TimerSettings _initial;
+
+  @override
+  TimerSettings build() => _initial;
 }

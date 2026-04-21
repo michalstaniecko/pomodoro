@@ -5,7 +5,21 @@
   "settings": {
     "title": "Settings",
     "placeholder": "Settings — placeholder",
-    "tooltip": "Settings"
+    "tooltip": "Settings",
+    "section_durations": "Durations",
+    "section_cycle": "Cycle",
+    "section_automation": "Automation",
+    "section_notifications": "Notifications",
+    "work_duration": "Work duration",
+    "short_break_duration": "Short break",
+    "long_break_duration": "Long break",
+    "sessions_before_long_break": "Sessions until long break",
+    "auto_start_breaks": "Auto-start breaks",
+    "auto_start_next_work": "Auto-start next work",
+    "sound": "Sound",
+    "vibration": "Vibration",
+    "minutes_value": "{count} min",
+    "sessions_value": "{count}"
   },
   "timer": {
     "session_type": {

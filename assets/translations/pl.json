@@ -5,7 +5,21 @@
   "settings": {
     "title": "Ustawienia",
     "placeholder": "Ustawienia — placeholder",
-    "tooltip": "Ustawienia"
+    "tooltip": "Ustawienia",
+    "section_durations": "Czasy",
+    "section_cycle": "Cykl",
+    "section_automation": "Automatyzacja",
+    "section_notifications": "Powiadomienia",
+    "work_duration": "Czas pracy",
+    "short_break_duration": "Krótka przerwa",
+    "long_break_duration": "Długa przerwa",
+    "sessions_before_long_break": "Sesji do długiej przerwy",
+    "auto_start_breaks": "Auto-start przerw",
+    "auto_start_next_work": "Auto-start kolejnej pracy",
+    "sound": "Dźwięk",
+    "vibration": "Wibracja",
+    "minutes_value": "{count} min",
+    "sessions_value": "{count}"
   },
   "timer": {
     "session_type": {

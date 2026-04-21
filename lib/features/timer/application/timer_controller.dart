@@ -26,14 +26,10 @@ final sessionFinishedEventsProvider = StreamProvider<SessionFinishedEvent>(
 );
 
 class TimerController extends Notifier<TimerState> {
-  late Ticker _ticker;
-  late Clock _clock;
-  late TimerSettings _settings;
-  late StartNextSessionUseCase _startNextSessionUseCase;
-
   StreamSubscription<void>? _tickerSub;
   final StreamController<SessionFinishedEvent> _events =
       StreamController<SessionFinishedEvent>.broadcast();
+  bool _disposed = false;
 
   static const Duration _tickInterval = Duration(seconds: 1);
 
@@ -41,12 +37,8 @@ class TimerController extends Notifier<TimerState> {
 
   @override
   TimerState build() {
-    _ticker = ref.watch(tickerProvider);
-    _clock = ref.watch(clockProvider);
-    _settings = ref.watch(timerSettingsProvider);
-    _startNextSessionUseCase = ref.watch(startNextSessionUseCaseProvider);
-
     ref.onDispose(() {
+      _disposed = true;
       unawaited(_tickerSub?.cancel());
       unawaited(_events.close());
     });
@@ -62,11 +54,12 @@ class TimerController extends Notifier<TimerState> {
       );
     }
     final type = current.nextSessionType;
-    final now = _clock();
+    final now = ref.read(clockProvider)();
+    final settings = ref.read(timerSettingsProvider);
     final session = PomodoroSession(
       id: now.microsecondsSinceEpoch.toString(),
       type: type,
-      duration: _settings.durationFor(type),
+      duration: settings.durationFor(type),
       startedAt: now,
     );
     state = state.start(session);
@@ -113,7 +106,7 @@ class TimerController extends Notifier<TimerState> {
     }
     _stopTicking();
     final cycle = ref.read(cycleControllerProvider);
-    final result = _startNextSessionUseCase(
+    final result = ref.read(startNextSessionUseCaseProvider)(
       cycle: cycle,
       completedType: skippedType,
     );
@@ -123,7 +116,10 @@ class TimerController extends Notifier<TimerState> {
 
   void _startTicking() {
     unawaited(_tickerSub?.cancel());
-    _tickerSub = _ticker.tick(interval: _tickInterval).listen((_) => _onTick());
+    _tickerSub = ref
+        .read(tickerProvider)
+        .tick(interval: _tickInterval)
+        .listen((_) => _onTick());
   }
 
   void _stopTicking() {
@@ -132,6 +128,9 @@ class TimerController extends Notifier<TimerState> {
   }
 
   void _onTick() {
+    if (_disposed) {
+      return;
+    }
     final current = state;
     if (current is! TimerRunning) {
       return;
@@ -146,14 +145,16 @@ class TimerController extends Notifier<TimerState> {
 
   void _completeCurrentSession(TimerRunning running) {
     _stopTicking();
-    final finishedAt = _clock();
+    final finishedAt = ref.read(clockProvider)();
     final finished = running.finish(finishedAt) as TimerFinished;
     state = finished;
-    _events.add(
-      SessionFinishedEvent(session: finished.session, finishedAt: finishedAt),
-    );
+    if (!_events.isClosed) {
+      _events.add(
+        SessionFinishedEvent(session: finished.session, finishedAt: finishedAt),
+      );
+    }
     final cycle = ref.read(cycleControllerProvider);
-    final result = _startNextSessionUseCase(
+    final result = ref.read(startNextSessionUseCaseProvider)(
       cycle: cycle,
       completedType: finished.session.type,
     );

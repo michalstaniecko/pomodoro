@@ -42,5 +42,20 @@
     "permanently_denied_body": "Enable notifications in system settings to receive session-end signals.",
     "open_settings": "Open settings",
     "dismiss": "Dismiss"
+  },
+  "notifications": {
+    "end": {
+      "title": "Pomodoro",
+      "body": {
+        "work": "Work session finished",
+        "short_break": "Short break finished",
+        "long_break": "Long break finished"
+      },
+      "action": {
+        "start_work": "Start work",
+        "start_break": "Start break",
+        "view": "View"
+      }
+    }
   }
 }

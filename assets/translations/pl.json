@@ -42,5 +42,20 @@
     "permanently_denied_body": "Zezwól na notyfikacje w ustawieniach systemu, aby otrzymywać sygnał końca sesji.",
     "open_settings": "Otwórz ustawienia",
     "dismiss": "Pomiń"
+  },
+  "notifications": {
+    "end": {
+      "title": "Pomodoro",
+      "body": {
+        "work": "Sesja pracy zakończona",
+        "short_break": "Krótka przerwa zakończona",
+        "long_break": "Długa przerwa zakończona"
+      },
+      "action": {
+        "start_work": "Zacznij pracę",
+        "start_break": "Zacznij przerwę",
+        "view": "Zobacz"
+      }
+    }
   }
 }

@@ -2,7 +2,7 @@
 ///
 /// Wydzielone do warstwy domenowej, bo te stałe będą referencjonowane przez
 /// późniejsze issues (foreground service, live activity, scheduled reminders)
-/// niezależne od konkretnej implementacji pluginu.
+/// niezależnie od konkretnej implementacji pluginu.
 class NotificationChannels {
   const NotificationChannels._();
 
@@ -19,4 +19,8 @@ class NotificationChannels {
   static const String endChannelName = 'Pomodoro End';
   static const String endChannelDescription =
       'Powiadomienie o zakończeniu sesji lub przerwy.';
+
+  /// ID zarezerwowane dla notyfikacji końca sesji (Android + iOS scheduled).
+  /// Inne niż foreground service notification ID (1001).
+  static const int endNotificationId = 2001;
 }

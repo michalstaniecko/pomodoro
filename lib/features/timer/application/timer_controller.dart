@@ -149,6 +149,7 @@ class TimerController extends Notifier<TimerState> {
         SessionFinishedEvent(
           session: cancelledSession.copyWith(completedAt: finishedAt),
           finishedAt: finishedAt,
+          nextType: cancelledSession.type,
         ),
       );
     }
@@ -233,11 +234,6 @@ class TimerController extends Notifier<TimerState> {
       completedAt: finishedAt,
     );
     state = TimerState.finished(session: completedSession);
-    if (!_events.isClosed) {
-      _events.add(
-        SessionFinishedEvent(session: completedSession, finishedAt: finishedAt),
-      );
-    }
     _pausedAt = null;
     _accumulatedPaused = Duration.zero;
     final cycle = ref.read(cycleControllerProvider);
@@ -246,6 +242,15 @@ class TimerController extends Notifier<TimerState> {
       completedType: completedSession.type,
     );
     ref.read(cycleControllerProvider.notifier).set(result.cycle);
+    if (!_events.isClosed) {
+      _events.add(
+        SessionFinishedEvent(
+          session: completedSession,
+          finishedAt: finishedAt,
+          nextType: result.nextType,
+        ),
+      );
+    }
     state = TimerState.idle(nextSessionType: result.nextType);
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/router_provider.dart';
+import '../features/notifications/presentation/session_end_notification_observer.dart';
 import '../features/notifications/presentation/session_end_signal_observer.dart';
 import '../features/timer/presentation/foreground_service_action_observer.dart';
 import '../features/timer/presentation/timer_lifecycle_observer.dart';
@@ -27,6 +28,13 @@ class PomodoroApp extends ConsumerWidget {
             supportedLocales: context.supportedLocales,
             localizationsDelegates: context.localizationDelegates,
             routerConfig: router,
+            builder: (context, child) {
+              // SessionEndNotificationObserver wewnątrz MaterialApp —
+              // potrzebuje kontekstu z localizationsDelegates dla .tr().
+              return SessionEndNotificationObserver(
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
           ),
         ),
       ),

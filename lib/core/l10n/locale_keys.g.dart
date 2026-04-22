@@ -41,4 +41,15 @@ abstract class LocaleKeys {
       'permissions.permanently_denied_body';
   static const permissions_open_settings = 'permissions.open_settings';
   static const permissions_dismiss = 'permissions.dismiss';
+  static const notifications_end_title = 'notifications.end.title';
+  static const notifications_end_body_work = 'notifications.end.body.work';
+  static const notifications_end_body_short_break =
+      'notifications.end.body.short_break';
+  static const notifications_end_body_long_break =
+      'notifications.end.body.long_break';
+  static const notifications_end_action_start_work =
+      'notifications.end.action.start_work';
+  static const notifications_end_action_start_break =
+      'notifications.end.action.start_break';
+  static const notifications_end_action_view = 'notifications.end.action.view';
 }

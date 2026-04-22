@@ -51,6 +51,7 @@ class TimerController extends Notifier<TimerState> {
       unawaited(_events.close());
     });
 
+    unawaited(_restoreFromStorage());
     return const TimerState.idle();
   }
 
@@ -73,6 +74,7 @@ class TimerController extends Notifier<TimerState> {
     _pausedAt = null;
     _accumulatedPaused = Duration.zero;
     state = state.start(session);
+    _persistCurrentState();
     _startTicking();
     if (labels != null) {
       unawaited(
@@ -96,6 +98,7 @@ class TimerController extends Notifier<TimerState> {
       now.difference(before.session.startedAt) - _accumulatedPaused,
     );
     state = TimerState.paused(session: before.session, elapsed: elapsed);
+    _persistCurrentState();
     _stopTicking();
     final remaining = before.session.duration - elapsed;
     unawaited(
@@ -121,6 +124,7 @@ class TimerController extends Notifier<TimerState> {
       now.difference(before.session.startedAt) - _accumulatedPaused,
     );
     state = TimerState.running(session: before.session, elapsed: elapsed);
+    _persistCurrentState();
     _startTicking();
     final remaining = before.session.duration - elapsed;
     unawaited(
@@ -156,6 +160,7 @@ class TimerController extends Notifier<TimerState> {
     _pausedAt = null;
     _accumulatedPaused = Duration.zero;
     state = TimerState.idle(nextSessionType: cancelledSession.type);
+    _persistCurrentState();
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
 
@@ -181,6 +186,7 @@ class TimerController extends Notifier<TimerState> {
     );
     ref.read(cycleControllerProvider.notifier).set(result.cycle);
     state = TimerState.idle(nextSessionType: result.nextType);
+    _persistCurrentState();
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
 
@@ -219,6 +225,7 @@ class TimerController extends Notifier<TimerState> {
       _completeCurrentSession(current);
     } else {
       state = TimerState.running(session: current.session, elapsed: elapsed);
+      _persistCurrentState();
     }
   }
 
@@ -252,7 +259,41 @@ class TimerController extends Notifier<TimerState> {
       );
     }
     state = TimerState.idle(nextSessionType: result.nextType);
+    _persistCurrentState();
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
+  }
+
+  void _persistCurrentState() {
+    if (_disposed) return;
+    unawaited(
+      ref.read(timerStateRepositoryProvider).save(state, _accumulatedPaused),
+    );
+  }
+
+  Future<void> _restoreFromStorage() async {
+    try {
+      final snapshot = await ref.read(timerStateRepositoryProvider).load();
+      if (snapshot == null || _disposed) return;
+      final restored = snapshot.state;
+      if (restored is! TimerRunning && restored is! TimerPaused) return;
+
+      _accumulatedPaused = snapshot.accumulatedPaused;
+      // Dla TimerPaused: ustawiamy _pausedAt na teraz — kiedy user wywoła
+      // resume(), delta czasu od _pausedAt zostanie dodana do _accumulatedPaused,
+      // co jest poprawne (czas "offline" w stanie Paused nie jest liczony).
+      _pausedAt = restored is TimerPaused ? ref.read(clockProvider)() : null;
+      state = restored;
+
+      if (restored is TimerRunning) {
+        // _onTick przelicza elapsed wall-clock; może ukończyć sesję jeśli czas minął.
+        _onTick();
+        if (state is TimerRunning) {
+          _startTicking();
+        }
+      }
+    } catch (_) {
+      // Cicho: przy błędzie odczytu zostawiamy idle.
+    }
   }
 
   static Duration _clampNonNeg(Duration d) =>

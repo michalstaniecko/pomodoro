@@ -9,6 +9,8 @@ import 'package:pomodoro/features/timer/application/ticker.dart';
 import 'package:pomodoro/features/timer/application/timer_controller.dart';
 import 'package:pomodoro/features/timer/application/timer_settings.dart';
 import 'package:pomodoro/features/timer/data/pomodoro_foreground_service.dart';
+import 'package:pomodoro/features/timer/data/timer_state_repository.dart';
+import 'package:pomodoro/features/timer/domain/pomodoro_session.dart';
 import 'package:pomodoro/features/timer/domain/session_display_labels.dart';
 import 'package:pomodoro/features/timer/domain/session_type.dart';
 import 'package:pomodoro/features/timer/domain/timer_state.dart';
@@ -35,6 +37,7 @@ void main() {
   late DateTime now;
   late ProviderContainer container;
   late _FakeForegroundService service;
+  late _FakeTimerStateRepository fakeRepo;
 
   const testSettings = TimerSettings(
     workDuration: Duration(seconds: 3),
@@ -47,6 +50,7 @@ void main() {
     ticker = FakeTicker();
     now = DateTime.utc(2026, 1, 1, 9);
     service = _FakeForegroundService();
+    fakeRepo = _FakeTimerStateRepository();
     container = ProviderContainer(
       overrides: [
         tickerProvider.overrideWithValue(ticker),
@@ -55,6 +59,7 @@ void main() {
           () => _FixedTimerSettingsNotifier(testSettings),
         ),
         pomodoroForegroundServiceProvider.overrideWithValue(service),
+        timerStateRepositoryProvider.overrideWithValue(fakeRepo),
       ],
     );
     addTearDown(container.dispose);
@@ -429,6 +434,182 @@ void main() {
       },
     );
   });
+
+  group('edge cases — lock screen / doze / restart / battery saver', () {
+    test(
+      'AC1: sesja przeżywa długie zablokowanie ekranu (gap > duration)',
+      () async {
+        final events = <SessionFinishedEvent>[];
+        final sub = container
+            .read(timerControllerProvider.notifier)
+            .events
+            .listen(events.add);
+        addTearDown(sub.cancel);
+
+        final controller = container.read(timerControllerProvider.notifier);
+        final startedAt = now;
+        controller.start();
+
+        // Lock screen — zero ticków przez czas znacznie dłuższy niż workDuration.
+        // (testSettings.workDuration=3s, symulujemy 25x workDuration.)
+        now = startedAt.add(testSettings.workDuration * 25);
+        controller.onAppResumed();
+        await pump();
+
+        expect(events, hasLength(1));
+        expect(events.single.session.completed, isTrue);
+        expect(
+          events.single.finishedAt,
+          startedAt.add(testSettings.workDuration),
+        );
+      },
+    );
+
+    test('AC4: doze mode — ticki wstrzymane, wall-clock kompensuje', () async {
+      final controller = container.read(timerControllerProvider.notifier);
+      final startedAt = now;
+      controller.start();
+
+      now = startedAt.add(const Duration(seconds: 2));
+      controller.onAppResumed();
+      await pump();
+
+      final running = container.read(timerControllerProvider) as TimerRunning;
+      expect(running.elapsed, const Duration(seconds: 2));
+
+      // Kolejny doze — sesja kończy się w tle.
+      now = startedAt.add(const Duration(seconds: 4));
+      controller.onAppResumed();
+      await pump();
+      expect(container.read(timerControllerProvider), isA<TimerIdle>());
+    });
+
+    test(
+      'AC3: battery saver — nieregularne ticki nie psują elapsed (wall-clock)',
+      () async {
+        final controller = container.read(timerControllerProvider.notifier);
+        final startedAt = now;
+        controller.start();
+
+        now = startedAt.add(const Duration(milliseconds: 2000));
+        ticker.fire();
+        await pump();
+        expect(
+          (container.read(timerControllerProvider) as TimerRunning).elapsed,
+          const Duration(milliseconds: 2000),
+        );
+
+        // Dłuższa luka między tickami (battery saver throttling).
+        now = startedAt.add(const Duration(milliseconds: 2500));
+        ticker.fire();
+        await pump();
+        expect(
+          (container.read(timerControllerProvider) as TimerRunning).elapsed,
+          const Duration(milliseconds: 2500),
+        );
+      },
+    );
+
+    test('AC2: persist — start zapisuje stan do repo', () async {
+      final controller = container.read(timerControllerProvider.notifier);
+      controller.start();
+      await pump();
+
+      expect(fakeRepo.saves, greaterThanOrEqualTo(1));
+      final loaded = await fakeRepo.load();
+      expect(loaded, isNotNull);
+      expect(loaded!.state, isA<TimerRunning>());
+    });
+
+    test('AC2: persist — stop czyści repo', () async {
+      final controller = container.read(timerControllerProvider.notifier);
+      controller.start();
+      controller.stop();
+      await pump();
+
+      final loaded = await fakeRepo.load();
+      expect(loaded, isNull);
+    });
+
+    test('AC2: restart odtwarza TimerPaused z zachowanym elapsed', () async {
+      final controller = container.read(timerControllerProvider.notifier);
+      final startedAt = now;
+      controller.start();
+      now = startedAt.add(const Duration(seconds: 1));
+      ticker.fire();
+      await pump();
+      controller.pause();
+      await pump();
+
+      final saved = await fakeRepo.load();
+      expect(saved, isNotNull);
+      expect(saved!.state, isA<TimerPaused>());
+      expect((saved.state as TimerPaused).elapsed, const Duration(seconds: 1));
+
+      // Symulacja restartu — nowy ProviderContainer reużywający fakeRepo.
+      final ticker2 = FakeTicker();
+      addTearDown(ticker2.close);
+      final service2 = _FakeForegroundService();
+      final container2 = ProviderContainer(
+        overrides: [
+          tickerProvider.overrideWithValue(ticker2),
+          clockProvider.overrideWithValue(() => now),
+          timerSettingsProvider.overrideWith(
+            () => _FixedTimerSettingsNotifier(testSettings),
+          ),
+          pomodoroForegroundServiceProvider.overrideWithValue(service2),
+          timerStateRepositoryProvider.overrideWithValue(fakeRepo),
+        ],
+      );
+      addTearDown(container2.dispose);
+
+      container2.read(timerControllerProvider);
+      await pump();
+      await pump();
+
+      final restored = container2.read(timerControllerProvider);
+      expect(restored, isA<TimerPaused>());
+      expect((restored as TimerPaused).elapsed, const Duration(seconds: 1));
+    });
+
+    test('AC2: restart po ukończonej sesji w tle przechodzi do idle', () async {
+      final sessionStartedAt = now.subtract(const Duration(seconds: 5));
+      final runningState = TimerState.running(
+        session: PomodoroSession(
+          id: 'seed',
+          type: SessionType.work,
+          duration: testSettings.workDuration,
+          startedAt: sessionStartedAt,
+        ),
+        elapsed: const Duration(seconds: 1),
+      );
+      fakeRepo.seed(runningState, Duration.zero);
+
+      final ticker2 = FakeTicker();
+      addTearDown(ticker2.close);
+      final service2 = _FakeForegroundService();
+      final container2 = ProviderContainer(
+        overrides: [
+          tickerProvider.overrideWithValue(ticker2),
+          clockProvider.overrideWithValue(() => now),
+          timerSettingsProvider.overrideWith(
+            () => _FixedTimerSettingsNotifier(testSettings),
+          ),
+          pomodoroForegroundServiceProvider.overrideWithValue(service2),
+          timerStateRepositoryProvider.overrideWithValue(fakeRepo),
+        ],
+      );
+      addTearDown(container2.dispose);
+
+      container2.read(timerControllerProvider);
+      await pump();
+      await pump();
+
+      final restored = container2.read(timerControllerProvider);
+      expect(restored, isA<TimerIdle>());
+      expect((restored as TimerIdle).nextSessionType, SessionType.shortBreak);
+    });
+  });
 }
 
 class _FixedTimerSettingsNotifier extends TimerSettingsNotifier {
@@ -478,4 +659,27 @@ class _FakeForegroundService implements PomodoroForegroundService {
 
   @override
   Future<void> dispose() async {}
+}
+
+class _FakeTimerStateRepository implements TimerStateRepository {
+  ({TimerState state, Duration accumulatedPaused})? _saved;
+  int saves = 0;
+
+  void seed(TimerState state, Duration accumulatedPaused) {
+    _saved = (state: state, accumulatedPaused: accumulatedPaused);
+  }
+
+  @override
+  Future<void> save(TimerState state, Duration accumulatedPaused) async {
+    saves++;
+    if (state is TimerRunning || state is TimerPaused) {
+      _saved = (state: state, accumulatedPaused: accumulatedPaused);
+    } else {
+      _saved = null;
+    }
+  }
+
+  @override
+  Future<({TimerState state, Duration accumulatedPaused})?> load() async =>
+      _saved;
 }

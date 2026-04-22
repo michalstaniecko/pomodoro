@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/android_foreground_service.dart';
 import '../data/noop_foreground_service.dart';
 import '../data/pomodoro_foreground_service.dart';
+import '../data/timer_state_repository.dart';
 
 final pomodoroForegroundServiceProvider = Provider<PomodoroForegroundService>((
   ref,
@@ -23,3 +24,7 @@ final foregroundServiceActionsProvider =
     StreamProvider<ForegroundServiceAction>(
       (ref) => ref.watch(pomodoroForegroundServiceProvider).actions,
     );
+
+final timerStateRepositoryProvider = Provider<TimerStateRepository>(
+  (ref) => TimerStateRepository(),
+);

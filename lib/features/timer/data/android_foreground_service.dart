@@ -126,6 +126,8 @@ void _onServiceStart(ServiceInstance service) {
   Duration remaining = Duration.zero;
   bool paused = false;
   Timer? ticker;
+  bool lastPaused = false;
+  bool firstRender = true;
 
   String formatMmSs(Duration d) {
     final total = d.inSeconds < 0 ? 0 : d.inSeconds;
@@ -138,42 +140,50 @@ void _onServiceStart(ServiceInstance service) {
     final title = sessionLabel;
     final content = formatMmSs(remaining);
 
-    final details = AndroidNotificationDetails(
-      NotificationChannels.sessionChannelId,
-      NotificationChannels.sessionChannelName,
-      channelDescription: NotificationChannels.sessionChannelDescription,
-      importance: Importance.low,
-      priority: Priority.low,
-      ongoing: true,
-      autoCancel: false,
-      onlyAlertOnce: true,
-      showWhen: false,
-      playSound: false,
-      enableVibration: false,
-      category: AndroidNotificationCategory.progress,
-      actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          paused ? _actionResumeId : _actionPauseId,
-          paused ? resumeLabel : pauseLabel,
-          showsUserInterface: false,
-          cancelNotification: false,
-        ),
-        AndroidNotificationAction(
-          _actionStopId,
-          stopLabel,
-          showsUserInterface: false,
-          cancelNotification: false,
-        ),
-      ],
-    );
+    // plugin.show() tylko gdy zmienił się stan pause lub pierwszy render
+    // (zmiana przycisków akcji). Inaczej update tickowy co 1s powoduje
+    // re-animację (flicker) ikony w statusbarze — patrz issue #65.
+    if (firstRender || paused != lastPaused) {
+      firstRender = false;
+      lastPaused = paused;
 
-    await plugin.show(
-      _foregroundNotificationId,
-      title,
-      content,
-      NotificationDetails(android: details),
-      payload: _openTimerPayload,
-    );
+      final details = AndroidNotificationDetails(
+        NotificationChannels.sessionChannelId,
+        NotificationChannels.sessionChannelName,
+        channelDescription: NotificationChannels.sessionChannelDescription,
+        importance: Importance.low,
+        priority: Priority.low,
+        ongoing: true,
+        autoCancel: false,
+        onlyAlertOnce: true,
+        showWhen: false,
+        playSound: false,
+        enableVibration: false,
+        category: AndroidNotificationCategory.progress,
+        actions: <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            paused ? _actionResumeId : _actionPauseId,
+            paused ? resumeLabel : pauseLabel,
+            showsUserInterface: false,
+            cancelNotification: false,
+          ),
+          AndroidNotificationAction(
+            _actionStopId,
+            stopLabel,
+            showsUserInterface: false,
+            cancelNotification: false,
+          ),
+        ],
+      );
+
+      await plugin.show(
+        _foregroundNotificationId,
+        title,
+        content,
+        NotificationDetails(android: details),
+        payload: _openTimerPayload,
+      );
+    }
 
     if (service is AndroidServiceInstance) {
       unawaited(

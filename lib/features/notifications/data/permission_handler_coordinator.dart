@@ -41,7 +41,10 @@ class PermissionHandlerCoordinator
   @override
   Future<NotificationPermissionStatus> ensure() async {
     final PermissionStatus current = await _backend.status();
-    if (current.isGranted) {
+    // iOS provisional = ciche powiadomienia bez pełnego prompta. Nie traktujemy
+    // go jako fully granted — wołamy request(), żeby user zobaczył system dialog
+    // i app pojawiła się w Settings → Notifications — patrz issue #66.
+    if (current.isGranted && !current.isProvisional) {
       return NotificationPermissionStatus.granted;
     }
     if (current.isPermanentlyDenied) {

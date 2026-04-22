@@ -250,28 +250,20 @@ Future<void> _handleStart(BuildContext context, WidgetRef ref) async {
         SnackBar(content: Text(LocaleKeys.permissions_denied_snackbar.tr())),
       );
     case NotificationPermissionStatus.permanentlyDenied:
-      final opened = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(LocaleKeys.permissions_permanently_denied_title.tr()),
-          content: Text(LocaleKeys.permissions_permanently_denied_body.tr()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(LocaleKeys.permissions_dismiss.tr()),
+      // Pokaz snackbar tylko raz na sesję appki — unikamy powtarzanego prompta
+      // przy każdym tapnięciu Start (patrz issue #66).
+      final alreadyShown = ref.read(permissionDeniedMessageShownProvider);
+      if (!alreadyShown) {
+        ref.read(permissionDeniedMessageShownProvider.notifier).state = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LocaleKeys.permissions_permanently_denied_body.tr()),
+            action: SnackBarAction(
+              label: LocaleKeys.permissions_open_settings.tr(),
+              onPressed: () => coordinator.openSettings(),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(LocaleKeys.permissions_open_settings.tr()),
-            ),
-          ],
-        ),
-      );
-      if (opened ?? false) {
-        await coordinator.openSettings();
-      }
-      if (!context.mounted) {
-        return;
+          ),
+        );
       }
   }
   // Timer startuje niezależnie od decyzji — notyfikacje to enhancement, nie core.

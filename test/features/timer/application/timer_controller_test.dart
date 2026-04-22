@@ -64,6 +64,12 @@ void main() {
   Future<void> pump() => Future<void>.delayed(Duration.zero);
 
   group('TimerController', () {
+    // Helper: advance wall clock and fire one tick.
+    void advanceAndTick([Duration delta = const Duration(seconds: 1)]) {
+      now = now.add(delta);
+      ticker.fire();
+    }
+
     test('initial state is TimerIdle with nextSessionType=work', () {
       expect(container.read(timerControllerProvider), const TimerState.idle());
     });
@@ -82,7 +88,7 @@ void main() {
 
     test('tick advances elapsed by 1s per tick', () async {
       container.read(timerControllerProvider.notifier).start();
-      ticker.fire();
+      advanceAndTick();
       await pump();
 
       final running = container.read(timerControllerProvider) as TimerRunning;
@@ -92,19 +98,21 @@ void main() {
     test('pause() stops ticks; resume() continues', () async {
       final controller = container.read(timerControllerProvider.notifier);
       controller.start();
-      ticker.fire();
+      advanceAndTick();
       await pump();
 
       controller.pause();
       expect(container.read(timerControllerProvider), isA<TimerPaused>());
 
+      // Pauza trwa 1s — elapsed nie rośnie mimo tick'u.
+      now = now.add(const Duration(seconds: 1));
       ticker.fire();
       await pump();
       final paused = container.read(timerControllerProvider) as TimerPaused;
       expect(paused.elapsed, const Duration(seconds: 1));
 
       controller.resume();
-      ticker.fire();
+      advanceAndTick();
       await pump();
       final running = container.read(timerControllerProvider) as TimerRunning;
       expect(running.elapsed, const Duration(seconds: 2));
@@ -154,7 +162,7 @@ void main() {
 
         final controller = container.read(timerControllerProvider.notifier);
         controller.start();
-        ticker.fire();
+        advanceAndTick();
         await pump();
         controller.pause();
         controller.stop();
@@ -191,14 +199,20 @@ void main() {
           .listen(events.add);
       addTearDown(sub.cancel);
 
+      final startedAt = now;
       container.read(timerControllerProvider.notifier).start();
-      ticker.fireN(3);
+      advanceAndTick();
+      advanceAndTick();
+      advanceAndTick();
       await pump();
 
       expect(events, hasLength(1));
       expect(events.single.session.type, SessionType.work);
       expect(events.single.session.completed, isTrue);
-      expect(events.single.finishedAt, now);
+      expect(
+        events.single.finishedAt,
+        startedAt.add(testSettings.workDuration),
+      );
 
       final state = container.read(timerControllerProvider) as TimerIdle;
       expect(state.nextSessionType, SessionType.shortBreak);
@@ -215,7 +229,9 @@ void main() {
       final controller = container.read(timerControllerProvider.notifier);
 
       controller.start();
-      ticker.fireN(3);
+      advanceAndTick();
+      advanceAndTick();
+      advanceAndTick();
       await pump();
       expect(
         (container.read(timerControllerProvider) as TimerIdle).nextSessionType,
@@ -223,7 +239,8 @@ void main() {
       );
 
       controller.start();
-      ticker.fireN(2);
+      advanceAndTick();
+      advanceAndTick();
       await pump();
       expect(
         (container.read(timerControllerProvider) as TimerIdle).nextSessionType,
@@ -231,7 +248,9 @@ void main() {
       );
 
       controller.start();
-      ticker.fireN(3);
+      advanceAndTick();
+      advanceAndTick();
+      advanceAndTick();
       await pump();
       expect(
         (container.read(timerControllerProvider) as TimerIdle).nextSessionType,
@@ -302,10 +321,111 @@ void main() {
         addTearDown(sub.close);
 
         container.read(timerControllerProvider.notifier).start();
-        ticker.fireN(3);
+        now = now.add(const Duration(seconds: 3));
+        ticker.fire();
         await pump();
 
         expect(events, hasLength(1));
+      },
+    );
+
+    test(
+      'wall-clock: elapsed odzwierciedla gap bez ticków po onAppResumed()',
+      () async {
+        final controller = container.read(timerControllerProvider.notifier);
+        final startedAt = now;
+        controller.start();
+
+        // Symulacja zawieszenia isolate'u: 2s mija, ale brak ticków.
+        now = startedAt.add(const Duration(seconds: 2));
+
+        controller.onAppResumed();
+        await pump();
+
+        final running = container.read(timerControllerProvider) as TimerRunning;
+        expect(running.elapsed, const Duration(seconds: 2));
+      },
+    );
+
+    test(
+      'sesja zakończona w tle -> _completeCurrentSession po wznowieniu',
+      () async {
+        final events = <SessionFinishedEvent>[];
+        final sub = container
+            .read(timerControllerProvider.notifier)
+            .events
+            .listen(events.add);
+        addTearDown(sub.cancel);
+
+        final controller = container.read(timerControllerProvider.notifier);
+        final startedAt = now;
+        controller.start();
+
+        // 5s w tle > workDuration (3s) — sesja powinna się ukończyć po resume.
+        now = startedAt.add(const Duration(seconds: 5));
+        controller.onAppResumed();
+        await pump();
+
+        expect(events, hasLength(1));
+        expect(events.single.session.completed, isTrue);
+        expect(
+          events.single.finishedAt,
+          startedAt.add(testSettings.workDuration),
+        );
+
+        final state = container.read(timerControllerProvider) as TimerIdle;
+        expect(state.nextSessionType, SessionType.shortBreak);
+      },
+    );
+
+    test('finishedAt = startedAt + duration (a nie resume time)', () async {
+      final events = <SessionFinishedEvent>[];
+      final sub = container
+          .read(timerControllerProvider.notifier)
+          .events
+          .listen(events.add);
+      addTearDown(sub.cancel);
+
+      final controller = container.read(timerControllerProvider.notifier);
+      final startedAt = now;
+      controller.start();
+
+      // Wznowienie 10s po starcie — finishedAt MUSI być startedAt + 3s.
+      now = startedAt.add(const Duration(seconds: 10));
+      controller.onAppResumed();
+      await pump();
+
+      expect(
+        events.single.finishedAt,
+        startedAt.add(testSettings.workDuration),
+      );
+    });
+
+    test(
+      'pauza: accumulatedPaused nie doliczony do elapsed po resume',
+      () async {
+        final controller = container.read(timerControllerProvider.notifier);
+        final startedAt = now;
+        controller.start();
+
+        now = startedAt.add(const Duration(seconds: 1));
+        controller.pause();
+        final paused = container.read(timerControllerProvider) as TimerPaused;
+        expect(paused.elapsed, const Duration(seconds: 1));
+
+        // Pauza trwa 5s.
+        now = now.add(const Duration(seconds: 5));
+        controller.resume();
+        final running = container.read(timerControllerProvider) as TimerRunning;
+        expect(running.elapsed, const Duration(seconds: 1));
+
+        // Po 1s działania: elapsed = 2s (5s pauzy nie wlicza się).
+        now = now.add(const Duration(seconds: 1));
+        ticker.fire();
+        await pump();
+        final running2 =
+            container.read(timerControllerProvider) as TimerRunning;
+        expect(running2.elapsed, const Duration(seconds: 2));
       },
     );
   });

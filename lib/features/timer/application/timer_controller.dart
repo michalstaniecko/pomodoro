@@ -33,6 +33,12 @@ class TimerController extends Notifier<TimerState> {
       StreamController<SessionFinishedEvent>.broadcast();
   bool _disposed = false;
 
+  // Wall-clock pause tracking: akumulujemy czas w stanie Paused, aby elapsed
+  // liczyło się z `now - startedAt - _accumulatedPaused`, odpornie na zawieszenia
+  // isolate'u (lock screen / doze mode).
+  DateTime? _pausedAt;
+  Duration _accumulatedPaused = Duration.zero;
+
   static const Duration _tickInterval = Duration(seconds: 1);
 
   Stream<SessionFinishedEvent> get events => _events.stream;
@@ -64,6 +70,8 @@ class TimerController extends Notifier<TimerState> {
       duration: settings.durationFor(type),
       startedAt: now,
     );
+    _pausedAt = null;
+    _accumulatedPaused = Duration.zero;
     state = state.start(session);
     _startTicking();
     if (labels != null) {
@@ -77,32 +85,49 @@ class TimerController extends Notifier<TimerState> {
 
   void pause() {
     final before = state;
-    state = state.pause();
-    _stopTicking();
-    if (before is TimerRunning) {
-      final remaining = before.session.duration - before.elapsed;
-      unawaited(
-        ref
-            .read(pomodoroForegroundServiceProvider)
-            .pause(remaining: remaining.isNegative ? Duration.zero : remaining),
+    if (before is! TimerRunning) {
+      throw StateError(
+        'pause() dozwolony tylko z TimerRunning (aktualny: ${before.runtimeType}).',
       );
     }
+    final now = ref.read(clockProvider)();
+    _pausedAt = now;
+    final elapsed = _clampNonNeg(
+      now.difference(before.session.startedAt) - _accumulatedPaused,
+    );
+    state = TimerState.paused(session: before.session, elapsed: elapsed);
+    _stopTicking();
+    final remaining = before.session.duration - elapsed;
+    unawaited(
+      ref
+          .read(pomodoroForegroundServiceProvider)
+          .pause(remaining: remaining.isNegative ? Duration.zero : remaining),
+    );
   }
 
   void resume() {
     final before = state;
-    state = state.resume();
-    _startTicking();
-    if (before is TimerPaused) {
-      final remaining = before.session.duration - before.elapsed;
-      unawaited(
-        ref
-            .read(pomodoroForegroundServiceProvider)
-            .resume(
-              remaining: remaining.isNegative ? Duration.zero : remaining,
-            ),
+    if (before is! TimerPaused) {
+      throw StateError(
+        'resume() dozwolony tylko z TimerPaused (aktualny: ${before.runtimeType}).',
       );
     }
+    final now = ref.read(clockProvider)();
+    if (_pausedAt != null) {
+      _accumulatedPaused += now.difference(_pausedAt!);
+    }
+    _pausedAt = null;
+    final elapsed = _clampNonNeg(
+      now.difference(before.session.startedAt) - _accumulatedPaused,
+    );
+    state = TimerState.running(session: before.session, elapsed: elapsed);
+    _startTicking();
+    final remaining = before.session.duration - elapsed;
+    unawaited(
+      ref
+          .read(pomodoroForegroundServiceProvider)
+          .resume(remaining: remaining.isNegative ? Duration.zero : remaining),
+    );
   }
 
   void stop() {
@@ -127,6 +152,8 @@ class TimerController extends Notifier<TimerState> {
         ),
       );
     }
+    _pausedAt = null;
+    _accumulatedPaused = Duration.zero;
     state = TimerState.idle(nextSessionType: cancelledSession.type);
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
@@ -144,6 +171,8 @@ class TimerController extends Notifier<TimerState> {
       );
     }
     _stopTicking();
+    _pausedAt = null;
+    _accumulatedPaused = Duration.zero;
     final cycle = ref.read(cycleControllerProvider);
     final result = ref.read(startNextSessionUseCaseProvider)(
       cycle: cycle,
@@ -152,6 +181,12 @@ class TimerController extends Notifier<TimerState> {
     ref.read(cycleControllerProvider.notifier).set(result.cycle);
     state = TimerState.idle(nextSessionType: result.nextType);
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
+  }
+
+  /// Wywołane przez WidgetsBindingObserver po `AppLifecycleState.resumed`,
+  /// aby dogonić elapsed po zawieszeniu isolate'u w tle.
+  void onAppResumed() {
+    _onTick();
   }
 
   void _startTicking() {
@@ -175,31 +210,46 @@ class TimerController extends Notifier<TimerState> {
     if (current is! TimerRunning) {
       return;
     }
-    final next = current.tick(_tickInterval) as TimerRunning;
-    if (next.elapsed >= next.session.duration) {
-      _completeCurrentSession(next);
+    final now = ref.read(clockProvider)();
+    final elapsed = _clampNonNeg(
+      now.difference(current.session.startedAt) - _accumulatedPaused,
+    );
+    if (elapsed >= current.session.duration) {
+      _completeCurrentSession(current);
     } else {
-      state = next;
+      state = TimerState.running(session: current.session, elapsed: elapsed);
     }
   }
 
   void _completeCurrentSession(TimerRunning running) {
     _stopTicking();
-    final finishedAt = ref.read(clockProvider)();
-    final finished = running.finish(finishedAt) as TimerFinished;
-    state = finished;
+    // finishedAt = moment, w którym sesja faktycznie się skończyła (nie moment
+    // wykrycia — chroni przed driftem gdy isolate obudzi się z opóźnieniem).
+    final finishedAt = running.session.startedAt
+        .add(_accumulatedPaused)
+        .add(running.session.duration);
+    final completedSession = running.session.copyWith(
+      completed: true,
+      completedAt: finishedAt,
+    );
+    state = TimerState.finished(session: completedSession);
     if (!_events.isClosed) {
       _events.add(
-        SessionFinishedEvent(session: finished.session, finishedAt: finishedAt),
+        SessionFinishedEvent(session: completedSession, finishedAt: finishedAt),
       );
     }
+    _pausedAt = null;
+    _accumulatedPaused = Duration.zero;
     final cycle = ref.read(cycleControllerProvider);
     final result = ref.read(startNextSessionUseCaseProvider)(
       cycle: cycle,
-      completedType: finished.session.type,
+      completedType: completedSession.type,
     );
     ref.read(cycleControllerProvider.notifier).set(result.cycle);
     state = TimerState.idle(nextSessionType: result.nextType);
     unawaited(ref.read(pomodoroForegroundServiceProvider).stop());
   }
+
+  static Duration _clampNonNeg(Duration d) =>
+      d < Duration.zero ? Duration.zero : d;
 }
